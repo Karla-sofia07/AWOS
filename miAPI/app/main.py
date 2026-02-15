@@ -6,14 +6,14 @@ from typing import Optional
 #Instacia 
 app = FastAPI(
     title='Mi primer API',
-     description='Pilar Basaldua',
+     description='Sofía Álvarez',
      version='1.0.0'
      )
 #TB ficticia 
 usuarios=[
-    {"id":1,"nombre":"Juan Carlos","edad":23},
+    {"id":1,"nombre":"Alexis","edad":20},
     {"id":2,"nombre":"America","edad":20},
-    {"id":3,"nombre":"Sofi","edad":19},
+    {"id":3,"nombre":"Jairo","edad":20},
 ]
 
 #Endpoinst
@@ -67,4 +67,33 @@ async def crear_usuario(usuario:dict):
         "Usuario":usuario
     }
 
-@app.put ()
+@app.put("/v1/usuarios/{user_id}", tags=['CRUD HTTP'])
+async def actualizar_usuario(user_id: int, datos: dict):
+    for usr in usuarios:
+        if usr["id"] == user_id:
+            usr.update(datos)
+            return {
+                "mensaje": "Usuario actualizado",
+                "usuario": usr
+            }
+
+    raise HTTPException(
+        status_code=404,
+        detail="Usuario no encontrado"
+    )
+
+
+@app.delete("/v1/usuarios/{user_id}", tags=['CRUD HTTP'])
+async def eliminar_usuario(user_id: int):
+    for usr in usuarios:
+        if usr["id"] == user_id:
+            usuarios.remove(usr)
+            return {
+                "mensaje": "Usuario eliminado",
+                "usuario": usr
+            }
+
+    raise HTTPException(
+        status_code=404,
+        detail="Usuario no encontrado"
+    )
