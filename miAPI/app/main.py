@@ -18,7 +18,6 @@ usuarios=[
 ]
 
 #modelo de validacion
-#modelo de validacion
 class usuario_create(BaseModel):
     id: int = Field(..., gt=0, description="Identificador de usuario, debe ser un entero positivo")
     nombre: str= Field(..., min_length=3, max_length=50, example="Juanita")
