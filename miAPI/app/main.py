@@ -1,87 +1,129 @@
-#Importaciones
-from fastapi import FastAPI, status, HTTPException
-import asyncio 
-from typing import Optional 
-from pydantic import BaseModel,Field
+# IMPORTACIONES
+from fastapi import FastAPI, status, HTTPException, Depends
+import asyncio
+from typing import Optional
+from pydantic import BaseModel, Field
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+import secrets
 
-#Instacia 
+
+# INSTANCIA DE LA APP
+
 app = FastAPI(
-    title='Mi primer API',
-     description='Sofía Álvarez',
-     version='1.0.0'
-     )
-#TB ficticia 
-usuarios=[
-    {"id":1,"nombre":"Alexis","edad":20},
-    {"id":2,"nombre":"America","edad":20},
-    {"id":3,"nombre":"Jairo","edad":20},
+    title="Mi primer API",
+    description="Esta es mi primera API con FastAPI en la clase del profe Isay",
+    version="1.0.0"
+)
+
+
+# SEGURIDAD HTTP BASIC
+security = HTTPBasic()
+
+def verificar_peticion(credentials: HTTPBasicCredentials = Depends(security)):
+    userAuth = secrets.compare_digest(credentials.username, "Sofia")
+    passAuth = secrets.compare_digest(credentials.password, "123456")
+
+    if not (userAuth and passAuth):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Credenciales no autorizadas"
+        )
+
+    return credentials.username
+
+
+# BASE DE DATOS FICTICIA
+usuarios = [
+    {"id": 1, "nombre": "Montse", "edad": 20},
+    {"id": 2, "nombre": "Jairo", "edad": 20},
+    {"id": 3, "nombre": "Pilar", "edad": 19},
+    {"id": 4, "nombre": "Alexis", "edad": 20}
 ]
 
-#modelo de validacion
-class usuario_create(BaseModel):
-    id: int = Field(..., gt=0, description="Identificador de usuario, debe ser un entero positivo")
-    nombre: str= Field(..., min_length=3, max_length=50, example="Juanita")
-    edad: int = Field(..., ge=0, le=123, description="Edad valida entre 0 y 120")
 
-#Endpoinst
-@app.get("/", tags=['Inicio'])
+
+# MODELO PYDANTIC
+
+class UsuarioCreate(BaseModel):
+    id: int = Field(..., gt=0, description="Identificador de usuario")
+    nombre: str = Field(..., min_length=3, max_length=50, example="Juanita")
+    edad: int = Field(..., ge=1, le=123, description="Edad válida entre 1 - 123")
+
+
+
+# ENDPOINTS
+
+@app.get("/", tags=["Inicio"])
 async def bienvenida():
-    return {"mensaje": "¡Bienvenido de mi API!"}
+    return {"message": "Bienvenido a mi API"}
 
-@app.get("/HolaMundo", tags=['Bienvenida Asincrona'])
+
+@app.get("/HolaMundo", tags=["Bienvenida Asincrona"])
 async def hola():
-    await asyncio.sleep(4) #Simulacion de una peticion
-    return{
-        "mensaje": "¡Hola mundo FastAPI!",
+    await asyncio.sleep(3)
+    return {
+        "mensaje": "Hola Mundo FastAPI",
         "estatus": "200"
     }
 
-@app.get("/v1/parametroOb/{id}", tags=['Parametro Obligatorio'])
-async def consultaUno(id:int):
+
+@app.get("/v1/parametroOb/{id}", tags=["Parametro Obligatorio"])
+async def consulta_uno(id: int):
     return {"Se encontro usuario": id}
 
-@app.get("/v1/parametroOp/", tags=['Parametro opcional'])
-async def consultaTodos(id: Optional[int]= None):
+
+@app.get("/v1/parametroOp/", tags=["Parametro opcional"])
+async def consulta_todos(id: Optional[int] = None):
     if id is not None:
         for usuario in usuarios:
-            if usuario["id"]== id: 
-                return{"mensaje":"usuario encontrado", "usuario": usuario}
-        return{"mensaje":"usuario no encontrado", "usuario": id}
+            if usuario["id"] == id:
+                return {"mensaje": "usuario encontrado", "usuario": usuario}
+        return {"mensaje": "usuario no encontrado", "usuario": id}
     else:
-        return{"mensaje":"No se proporciono id"}
+        return {"mensaje": "No se proporciono id"}
 
 
-@app.get("/v1/usuarios/", tags=['CRUD HTTP'])
+
+# CRUD
+
+@app.get("/v1/usuarios/", tags=["CRUD HTTP"])
 async def leer_usuarios():
-    return{
-        "status":"200",
-        "total": len(usuarios), 
-        "usuarios":usuarios
+    return {
+        "status": "200",
+        "total": len(usuarios),
+        "usuarios": usuarios
     }
 
 
-@app.post("/v1/usuarios/",tags=['CRUD HTTP'],status_code=status.HTTP_201_CREATED)
-async def crear_usuario(usuario: usuario_create):
-    for Usr in usuarios:
-        if Usr["id"] == usuario.id:
+@app.post(
+    "/v1/usuarios/",
+    tags=["CRUD HTTP"],
+    status_code=status.HTTP_201_CREATED
+)
+async def crear_usuario(usuario: UsuarioCreate):
+    for usr in usuarios:
+        if usr["id"] == usuario.id:
             raise HTTPException(
                 status_code=400,
-                 detail="El id ya existe"
+                detail="El id ya existe"
             )
-    usuarios.append(usuario)
-    return{
+
+    usuarios.append(usuario.dict())
+
+    return {
         "mensaje": "Usuario agregado",
         "usuario": usuario
     }
 
-@app.put("/v1/usuarios/{user_id}", tags=['CRUD HTTP'])
-async def actualizar_usuario(user_id: int, datos: dict):
-    for usr in usuarios:
-        if usr["id"] == user_id:
-            usr.update(datos)
+
+@app.put("/v1/usuarios/{id}", tags=["CRUD HTTP"])
+async def actualizar_usuario(id: int, usuario: UsuarioCreate):
+    for i, u in enumerate(usuarios):
+        if u["id"] == id:
+            usuarios[i] = usuario.dict()
             return {
                 "mensaje": "Usuario actualizado",
-                "usuario": usr
+                "usuario": usuario
             }
 
     raise HTTPException(
@@ -90,14 +132,16 @@ async def actualizar_usuario(user_id: int, datos: dict):
     )
 
 
-@app.delete("/v1/usuarios/{user_id}", tags=['CRUD HTTP'])
-async def eliminar_usuario(user_id: int):
-    for usr in usuarios:
-        if usr["id"] == user_id:
-            usuarios.remove(usr)
+@app.delete("/v1/usuarios/{id}", tags=["CRUD HTTP"])
+async def eliminar_usuario(
+    id: int,
+    userAuth: str = Depends(verificar_peticion)
+):
+    for index, usr in enumerate(usuarios):
+        if usr["id"] == id:
+            usuarios.pop(index)
             return {
-                "mensaje": "Usuario eliminado",
-                "usuario": usr
+                "mensaje": f"Usuario eliminado por: {userAuth}"
             }
 
     raise HTTPException(
