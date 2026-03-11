@@ -148,3 +148,5 @@ async def eliminar_usuario(
         status_code=404,
         detail="Usuario no encontrado"
     )
+
+# docker-compose up --build
