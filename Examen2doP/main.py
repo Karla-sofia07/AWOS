@@ -16,6 +16,7 @@ app = FastAPI(
 # Base de datos ficticia
 tickets = []
 estados = []
+
 # modelos
 class Usuario(BaseModel):
     nombre: str = Field(..., min_length=5, max_length=200)
@@ -23,19 +24,32 @@ class Usuario(BaseModel):
 
 class Ticket(BaseModel):
     id: int = Field(..., gt=0)
-    nombre: str = Field(..., min_length=20, max_length=200)
-    autor: str
+    descripción: str = Field(..., min_length=20, max_length=200)
+    prioridad: str
     estado: str = Field(default="Pendiente", pattern="^(Pendiente|Pendiente)$")
 
 class Estado(BaseModel):
     ticket_id: int
 
 # MODELO PYDANTIC
-class UsuarioCreate(BaseModel):
-    id: int = Field(..., gt=0, description="Identificador de usuario")
-    nombre: str = Field(..., min_length=3, max_length=50, example="Juanita")
-    edad: int = Field(..., ge=1, le=123, description="Edad válida entre 1 - 123")
+class TicketCreate(BaseModel):
+    id: int = Field(..., gt=0, description="Identificador de ticket")
+    descripción: str = Field(..., min_length=3, max_length=50, example="Juanita")
+    prioridad: int = Field(..., ge=1, le=123, description="Edad válida entre 1 - 123")
 
+security = HTTPBasic()
+
+def verificar_peticion(credentials: HTTPBasicCredentials = Depends(security)):
+    userAuth = secrets.compare_digest(credentials.username, "Soporte")
+    passAuth = secrets.compare_digest(credentials.password, "4321")
+
+    if not (userAuth and passAuth):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Credenciales no autorizadas"
+        )
+
+    return credentials.username
 
 # ENDPOINTS
 
@@ -45,10 +59,10 @@ async def bienvenida():
     return {"mensaje": "¡Bienvenido a la gestión de tickets!"}
 
 #crear ticket
-@app.post("/libros/", status_code=status.HTTP_201_CREATED)
+@app.post("/tickets/", status_code=status.HTTP_201_CREATED)
 def Crear_ticket(Ticket: Ticket):
 
-    for l in libros:
+    for l in tickets:
         if l["id"] == ticket.id:
             raise HTTPException(status_code=400, detail="Este ticket ya existe")
 
@@ -77,15 +91,17 @@ async def ConsultarID(
 @app.get("/v1/ticket/{id}", tags=['Parametro Obligatorio'])
 async def ConsultarID(
     id:Optional[int]=None
-    
+    userAuth: str = Depends(verificar_peticion)
     ):
+     for index, usr in enumerate(tickets):
     if id is not None:
         for Ticket in tickets: 
-            if  usuario["id"] == id: 
+            if  usr["id"] == id: 
                 return {"mensaje": "ticket encontrado", "ticket":ticket}
        return {"mensaje": "ticket encontrado", "ticket":id} 
     else:    
         return {"mensaje": "No se proporcionó id"}
+
 #cambiar estado
 
 @app.put("/estado/cambiar/{ticket_id}")
@@ -115,3 +131,8 @@ def eliminar_ticket(ticket_id: int):
     tickets.remove(ticket)
 
     return {"mensaje": "Ticket eliminado"}
+
+    raise HTTPException(
+        status_code=404,
+        detail="Usuario no encontrado"
+    )
