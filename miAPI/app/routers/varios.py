@@ -5,7 +5,7 @@ import asyncio
 from app.data.database import usuarios 
 from fastapi import APIRouter 
 
-router=APIRuter(tags=['Varios'])
+router=APIRouter(tags=['Varios'])
 
 @router.get("/", tags=["Inicio"])
 async def bienvenida():

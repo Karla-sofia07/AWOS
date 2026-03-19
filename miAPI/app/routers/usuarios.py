@@ -1,9 +1,9 @@
 # ENDPOINTS
 
 from fastapi import status, HTTPException, Depends, APIRouter
-from app.models.usuario import usuario_create 
+from app.models.usuario import UsuarioCreate 
 from app.data.database import usuarios
-from app. security.auth import verificar_Peticion
+from app. security.auth import verificar_peticion
 
 router = APIRouter(
     prefix= "", tags= ["CRUD HTTP"]
@@ -19,7 +19,7 @@ async def leer_usuarios():
     }
 
 
-@router.post("/" status_code=status.HTTP_201_CREATED)
+@router.post("/" , status_code=status.HTTP_201_CREATED)
 async def crear_usuario(usuario: UsuarioCreate):
     for usr in usuarios:
         if usr["id"] == usuario.id:
